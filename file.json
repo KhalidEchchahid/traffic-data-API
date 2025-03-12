@@ -1,0 +1,68 @@
+{
+  "trafficData": {
+    "density": 35,
+    "travelTime": 2,
+    "vehicleNumber": 37,
+    "speed": 37,
+    "directionChange": "left",
+    "pedestrianCount": 12,
+    "bicycleCount": 5,
+    "heavyVehicleCount": 3,
+    "incidentDetected": false,
+    "visibility": "good",
+    "weatherConditions": "sunny",
+    "roadCondition": "dry",
+    "congestionLevel": "medium",
+    "averageVehicleSize": "medium",
+    "vehicleTypeDistribution": {
+      "cars": 25,
+      "buses": 2,
+      "motorcycles": 8,
+      "trucks": 2
+    },
+    "trafficFlowDirection": "north-south",
+    "redLightViolations": 1,
+    "temperature": 28,
+    "humidity": 60,
+    "windSpeed": 15,
+    "airQualityIndex": 42,
+    "nearMissEvents": 2,
+    "accidentSeverity": "minor",
+    "roadworkDetected": false,
+    "illegalParkingCases": 4
+  },
+  "intersectionData": {
+    "stoppedVehiclesCount": 20,
+    "averageWaitTime": 30,
+    "leftTurnCount": 15,
+    "rightTurnCount": 10,
+    "averageSpeedByDirection": {
+      "north-south": 40,
+      "east-west": 35
+    },
+    "laneOccupancy": 75,
+    "intersectionBlockingVehicles": 3,
+    "trafficLightComplianceRate": 90,
+    "pedestriansCrossing": 25,
+    "jaywalkingPedestrians": 5,
+    "cyclistsCrossing": 7,
+    "riskyBehaviorDetected": true,
+    "queueLengthByLane": {
+      "lane1": 10,
+      "lane2": 15,
+      "lane3": 8
+    },
+    "intersectionCongestionLevel": "high",
+    "intersectionCrossingTime": 45,
+    "trafficLightImpact": "moderate",
+    "nearMissIncidents": 2,
+    "collisionCount": 1,
+    "suddenBrakingEvents": 4,
+    "illegalParkingDetected": false,
+    "wrongWayVehicles": 1,
+    "ambientLightLevel": 150,
+    "trafficLightStatus": "red",
+    "localWeatherConditions": "rain",
+    "fogOrSmokeDetected": false
+  }
+}
