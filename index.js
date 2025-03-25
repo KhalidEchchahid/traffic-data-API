@@ -5,6 +5,7 @@ const cors = require("cors");
 const app = express();
 
 // TODO: Separate file into multiple files for organisation
+//  assignees: khalid 
 //  labels: enhancement
 
 // Middleware
@@ -14,6 +15,7 @@ app.use(express.json());
 // TODO: Implement proper environment variable management
 //   labels: security, refactor
 //   Create .env file with template to remove hardcoded credentials
+//  assignees: khalidEchchahid
 
 // Configuration
 const CONFIG = {
@@ -26,6 +28,7 @@ const CONFIG = {
 
 // Kafka Setup
 // TODO: Implement Redis caching for heavy aggregation endpoints
+//  assignees: khalidEchchahid
 //   labels: performance, enhancement
 //   target endpoints: /api/traffic/stream, future other topics streams.
 const kafka = new Kafka({ brokers: CONFIG.KAFKA_BROKERS });
@@ -79,7 +82,9 @@ app.get("/api/traffic", async (req, res) => {
 // endpoint for Traffic Density vs Speed
 app.get("/api/historical/traffic", async (req, res) => {
   // TODO(enhancement): Use a single MongoClient
-  // No point having a new client for each route handler
+  // No point having a new client for each route handler  (singleton pattern)
+  // assignees: khalidEchchahid
+
   const client = new MongoClient(CONFIG.MONGO_URI);
   try {
     await client.connect();
@@ -391,6 +396,8 @@ app.get("/api/traffic/stream", async (req, res) => {
     //  repo for more info.
     //  labels: help wanted, enhancement
     //  milestone: raspi-integration
+    //  assignees: khalidEchchahid , aymanamkassou
+
     await consumer.subscribe({ topic: "traffic-data" });
 
     const sendFullData = ({ message }) => {
