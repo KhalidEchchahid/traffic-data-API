@@ -4,9 +4,16 @@ const { Kafka } = require("kafkajs");
 const cors = require("cors");
 const app = express();
 
+// TODO: Separate file into multiple files for organisation
+//  labels: enhancement
+
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// TODO: Implement proper environment variable management
+//   labels: security, refactor
+//   Create .env file with template to remove hardcoded credentials
 
 // Configuration
 const CONFIG = {
@@ -18,6 +25,9 @@ const CONFIG = {
 };
 
 // Kafka Setup
+// TODO: Implement Redis caching for heavy aggregation endpoints
+//   labels: performance, enhancement
+//   target endpoints: /api/traffic/stream, future other topics streams.
 const kafka = new Kafka({ brokers: CONFIG.KAFKA_BROKERS });
 
 // -------------------------------
@@ -68,6 +78,8 @@ app.get("/api/traffic", async (req, res) => {
 
 // endpoint for Traffic Density vs Speed
 app.get("/api/historical/traffic", async (req, res) => {
+  // TODO(enhancement): Use a single MongoClient
+  // No point having a new client for each route handler
   const client = new MongoClient(CONFIG.MONGO_URI);
   try {
     await client.connect();
@@ -206,7 +218,7 @@ app.get("/api/historical/congestion", async (req, res) => {
         id: day,
         data: Array.from({ length: 24 }, (_, hour) => {
           const dataPoint = data.find(
-            (d) => d._id.day === days.indexOf(day) + 1 && d._id.hour === hour
+            (d) => d._id.day === days.indexOf(day) + 1 && d._id.hour === hour,
           );
           return {
             x: hour.toString(),
@@ -374,6 +386,11 @@ app.get("/api/traffic/stream", async (req, res) => {
 
   try {
     await consumer.connect();
+    // TODO: Implement all our kafka topics with their respective component integration
+    //  We need to setup further topics, like traffic-alert sensor-health etc, see Rust
+    //  repo for more info.
+    //  labels: help wanted, enhancement
+    //  milestone: raspi-integration
     await consumer.subscribe({ topic: "traffic-data" });
 
     const sendFullData = ({ message }) => {
@@ -431,36 +448,35 @@ const calculateRiskScore = (data) => {
 
 function calculateRiskScoreV1(item) {
   let score = 0;
-  
+
   // Add weight for an incident if detected
   if (item.trafficData?.incidentDetected) {
     score += 50;
   }
-  
+
   // Add weight for near miss events from traffic data
   score += (item.trafficData?.nearMissEvents || 0) * 5;
-  
+
   // Add weight for collision count from intersection data
   score += (item.intersectionData?.collisionCount || 0) * 30;
-  
+
   // Add weight for risky behavior detected
   if (item.intersectionData?.riskyBehaviorDetected) {
     score += 20;
   }
-  
+
   // Add weight for near miss incidents in intersection data
   score += (item.intersectionData?.nearMissIncidents || 0) * 5;
-  
+
   // Add weight for sudden braking events in intersection data
   score += (item.intersectionData?.suddenBrakingEvents || 0) * 3;
-  
+
   // Instead of trafficData.lane1, use intersectionData.queueLengthByLane.lane1
   const lane1 = item.intersectionData?.queueLengthByLane?.lane1 ?? 0;
   score += Number(lane1) * 2;
-  
+
   return score;
 }
-
 
 // Risk factors identification
 const identifyRiskFactors = (data) => {
@@ -530,7 +546,6 @@ app.get("/api/risk-analysis", async (req, res) => {
     await client.close();
   }
 });
-
 
 // API for risk heatmap
 app.get("/api/risk/heatmap", async (req, res) => {
@@ -649,8 +664,8 @@ app.get("/api/risk/timeline", async (req, res) => {
         item.riskScore > 90
           ? "critical"
           : item.riskScore > 80
-          ? "major"
-          : "minor",
+            ? "major"
+            : "minor",
       factors: item.riskFactors,
     }));
 
