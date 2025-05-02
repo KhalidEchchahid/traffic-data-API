@@ -4,18 +4,9 @@ const { Kafka } = require("kafkajs");
 const cors = require("cors");
 const app = express();
 
-// TODO: Separate file into multiple files for organisation
-//  assignees: khalid 
-//  labels: enhancement
-
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-// TODO: Implement proper environment variable management
-//   labels: security, refactor
-//   Create .env file with template to remove hardcoded credentials
-//  assignees: khalidEchchahid
 
 // Configuration
 const CONFIG = {
@@ -27,20 +18,41 @@ const CONFIG = {
 };
 
 // Kafka Setup
-// TODO: Implement Redis caching for heavy aggregation endpoints
-//  assignees: khalidEchchahid
-//   labels: performance, enhancement
-//   target endpoints: /api/traffic/stream, future other topics streams.
 const kafka = new Kafka({ brokers: CONFIG.KAFKA_BROKERS });
 
-// -------------------------------
-//  Historical Data Endpoint (Full JSON)
-// -------------------------------
+// Create a single MongoDB client instance
+let mongoClient;
+
+// MongoDB Connection Function
+async function connectToMongoDB() {
+  if (!mongoClient) {
+    try {
+      mongoClient = new MongoClient(CONFIG.MONGO_URI);
+      await mongoClient.connect();
+      console.log("Connected to MongoDB");
+    } catch (error) {
+      console.error("Failed to connect to MongoDB:", error);
+      throw error;
+    }
+  }
+  return mongoClient.db(CONFIG.DB_NAME);
+}
+
+// Cleanup function for closing MongoDB connection
+function setupMongoCleanup() {
+  process.on('SIGINT', async () => {
+    if (mongoClient) {
+      await mongoClient.close();
+      console.log('MongoDB connection closed');
+      process.exit(0);
+    }
+  });
+}
+
+// Historical Data Endpoint (Full JSON)
 app.get("/api/traffic", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { timeframe = "24h", riskLevel } = req.query;
     const filter = {};
@@ -74,21 +86,13 @@ app.get("/api/traffic", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch historical data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Traffic Density vs Speed
 app.get("/api/historical/traffic", async (req, res) => {
-  // TODO(enhancement): Use a single MongoClient
-  // No point having a new client for each route handler  (singleton pattern)
-  // assignees: khalidEchchahid
-
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -120,18 +124,14 @@ app.get("/api/historical/traffic", async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to fetch traffic density and speed data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Incident Frequency
 app.get("/api/historical/incidents", async (req, res) => {
-  console.log("is this bieng called");
-  const client = new MongoClient(CONFIG.MONGO_URI);
+  console.log("is this being called");
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -169,16 +169,12 @@ app.get("/api/historical/incidents", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch incident frequency data" });
-  } finally {
-    await client.close();
   }
 });
 
 app.get("/api/historical/congestion", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -237,17 +233,13 @@ app.get("/api/historical/congestion", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch congestion heatmap data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Weather Distribution
 app.get("/api/historical/weather", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -283,17 +275,13 @@ app.get("/api/historical/weather", async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to fetch weather distribution data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Advanced Data Table
 app.get("/api/historical/data", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const { start, end } = req.query;
     const startDate = new Date(start);
@@ -332,17 +320,13 @@ app.get("/api/historical/data", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch advanced data table" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Average Historical Data
 app.get("/api/historical/average", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const pipeline = [
       {
@@ -371,14 +355,10 @@ app.get("/api/historical/average", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch average historical data" });
-  } finally {
-    await client.close();
   }
 });
 
-// -------------------------------
 // Real-Time Full Data Streaming
-// -------------------------------
 app.get("/api/traffic/stream", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -391,13 +371,6 @@ app.get("/api/traffic/stream", async (req, res) => {
 
   try {
     await consumer.connect();
-    // TODO: Implement all our kafka topics with their respective component integration
-    //  We need to setup further topics, like traffic-alert sensor-health etc, see Rust
-    //  repo for more info.
-    //  labels: help wanted, enhancement
-    //  milestone: raspi-integration
-    //  assignees: khalidEchchahid , aymanamkassou
-
     await consumer.subscribe({ topic: "traffic-data" });
 
     const sendFullData = ({ message }) => {
@@ -430,9 +403,6 @@ app.get("/api/traffic/stream", async (req, res) => {
   }
 });
 
-// -------------------------------
-// Risk Analysis Endpoints
-// -------------------------------
 // Risk score calculation logic
 const calculateRiskScore = (data) => {
   let score = 0;
@@ -503,10 +473,8 @@ const identifyRiskFactors = (data) => {
 
 // Risk analysis endpoint
 app.get("/api/risk-analysis", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const pipeline = [
       {
@@ -549,17 +517,13 @@ app.get("/api/risk-analysis", async (req, res) => {
   } catch (error) {
     console.error("Risk Analysis Error:", error);
     res.status(500).json({ error: "Failed to generate risk analysis" });
-  } finally {
-    await client.close();
   }
 });
 
 // API for risk heatmap
 app.get("/api/risk/heatmap", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
     const data = await db
       .collection(CONFIG.COLLECTION_NAME)
       .find({})
@@ -639,17 +603,13 @@ app.get("/api/risk/heatmap", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch risk heatmap data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Risk Timeline
 app.get("/api/risk/timeline", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const data = await db
       .collection(CONFIG.COLLECTION_NAME)
@@ -680,17 +640,13 @@ app.get("/api/risk/timeline", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch risk timeline data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Risk Factor Breakdown
 app.get("/api/risk/factors", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const pipeline = [
       {
@@ -724,17 +680,13 @@ app.get("/api/risk/factors", async (req, res) => {
     res
       .status(500)
       .json({ error: "Failed to fetch risk factor breakdown data" });
-  } finally {
-    await client.close();
   }
 });
 
 // endpoint for Incident Log
 app.get("/api/risk/incidents", async (req, res) => {
-  const client = new MongoClient(CONFIG.MONGO_URI);
   try {
-    await client.connect();
-    const db = client.db(CONFIG.DB_NAME);
+    const db = await connectToMongoDB();
 
     const data = await db
       .collection(CONFIG.COLLECTION_NAME)
@@ -763,8 +715,6 @@ app.get("/api/risk/incidents", async (req, res) => {
   } catch (error) {
     console.error("DB Error:", error);
     res.status(500).json({ error: "Failed to fetch incident log data" });
-  } finally {
-    await client.close();
   }
 });
 
@@ -781,4 +731,7 @@ app.listen(CONFIG.PORT, () => {
   console.log("- GET /api/historical/weather - Weather distribution data");
   console.log("- GET /api/historical/data - Advanced data table");
   console.log("- GET /api/historical/average - Average historical data");
+
+  // Setup MongoDB connection cleanup
+  setupMongoCleanup();
 });
