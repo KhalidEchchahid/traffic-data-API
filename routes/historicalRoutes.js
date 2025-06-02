@@ -17,16 +17,16 @@ router.get("/traffic", async (req, res) => {
       })
       .project({
         timestamp: 1,
-        "trafficData.density": 1,
-        "trafficData.speed": 1,
+        density: 1,
+        speed: 1,
       })
       .sort({ timestamp: 1 })
       .toArray()
 
     const formattedData = data.map((item) => ({
       timestamp: item.timestamp,
-      density: item.trafficData.density,
-      speed: item.trafficData.speed,
+      density: item.density,
+      speed: item.speed,
     }))
 
     res.json(formattedData)
@@ -49,7 +49,7 @@ router.get("/incidents", async (req, res) => {
       {
         $match: {
           timestamp: { $gte: startDate, $lte: endDate },
-          "trafficData.incidentDetected": true,
+          incident_detected: true,
         },
       },
       {
@@ -98,7 +98,18 @@ router.get("/congestion", async (req, res) => {
             day: { $dayOfWeek: "$timestamp" },
             hour: { $hour: "$timestamp" },
           },
-          avgCongestion: { $avg: "$trafficData.congestionLevel" },
+          avgCongestion: { 
+            $avg: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$congestion_level", "low"] }, then: 1 },
+                  { case: { $eq: ["$congestion_level", "medium"] }, then: 2 },
+                  { case: { $eq: ["$congestion_level", "high"] }, then: 3 },
+                ],
+                default: 0,
+              },
+            },
+          },
         },
       },
       {
@@ -146,7 +157,7 @@ router.get("/weather", async (req, res) => {
       },
       {
         $group: {
-          _id: "$intersectionData.localWeatherConditions",
+          _id: "$local_weather_conditions",
           count: { $sum: 1 },
         },
       },
@@ -182,10 +193,10 @@ router.get("/data", async (req, res) => {
       .project({
         timestamp: 1,
         riskScore: 1,
-        "trafficData.congestionLevel": 1,
-        "intersectionData.localWeatherConditions": 1,
-        "trafficData.incidentDetected": 1,
-        "trafficData.vehicleTypeDistribution": 1,
+        congestion_level: 1,
+        local_weather_conditions: 1,
+        incident_detected: 1,
+        vehicle_type_distribution: 1,
       })
       .sort({ timestamp: -1 })
       .limit(1000)
@@ -195,12 +206,14 @@ router.get("/data", async (req, res) => {
       id: item._id.toString(),
       timestamp: item.timestamp,
       riskScore: item.riskScore,
-      congestionLevel: item.trafficData.congestionLevel,
-      weather: item.intersectionData.localWeatherConditions,
-      incident: item.trafficData.incidentDetected ? "Yes" : "No",
-      vehicleTypes: Object.entries(item.trafficData.vehicleTypeDistribution)
-        .map(([type, count]) => `${type}: ${count}`)
-        .join(", "),
+      congestionLevel: item.congestion_level,
+      weather: item.local_weather_conditions,
+      incident: item.incident_detected ? "Yes" : "No",
+      vehicleTypes: item.vehicle_type_distribution 
+        ? Object.entries(item.vehicle_type_distribution)
+            .map(([type, count]) => `${type}: ${count}`)
+            .join(", ")
+        : "N/A",
     }))
 
     res.json(formattedData)
@@ -219,10 +232,21 @@ router.get("/average", async (req, res) => {
       {
         $group: {
           _id: null,
-          avgDensity: { $avg: "$trafficData.density" },
-          avgSpeed: { $avg: "$trafficData.speed" },
+          avgDensity: { $avg: "$density" },
+          avgSpeed: { $avg: "$speed" },
           avgRiskScore: { $avg: "$riskScore" },
-          avgCongestionLevel: { $avg: "$trafficData.congestionLevel" },
+          avgCongestionLevel: { 
+            $avg: {
+              $switch: {
+                branches: [
+                  { case: { $eq: ["$congestion_level", "low"] }, then: 1 },
+                  { case: { $eq: ["$congestion_level", "medium"] }, then: 2 },
+                  { case: { $eq: ["$congestion_level", "high"] }, then: 3 },
+                ],
+                default: 0,
+              },
+            },
+          },
         },
       },
     ]

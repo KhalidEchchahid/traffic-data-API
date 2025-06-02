@@ -6,9 +6,9 @@ const config = {
   DB_NAME: process.env.DB_NAME || "traffic_db",
   COLLECTION_NAME: process.env.COLLECTION_NAME || "traffic_metrics",
   VEHICLE_COLLECTION: process.env.VEHICLE_COLLECTION || "vehicle_records",
-  INTERSECTION_COLLECTION: process.env.INTERSECTION_COLLECTION || "intersection_data",
+  INTERSECTION_COLLECTION: process.env.INTERSECTION_COLLECTION || "intersections",
   SENSOR_HEALTH_COLLECTION: process.env.SENSOR_HEALTH_COLLECTION || "sensor_health",
-  ALERTS_COLLECTION: process.env.ALERTS_COLLECTION || "traffic_alerts",
+  ALERTS_COLLECTION: process.env.ALERTS_COLLECTION || "alerts",
 
   // Server Configuration
   PORT: process.env.PORT || 3001,
@@ -20,6 +20,7 @@ const config = {
     INTERSECTION: [],
     SENSOR: [],
     ALERT: [],
+    COORDINATION: [],
   },
 }
 
