@@ -153,8 +153,6 @@ router.get("/intersection/:intersectionId/weather-sync", async (req, res) => {
     const { intersectionId } = req.params
     const { history_hours = 6 } = req.query
 
-    console.log(`=== WEATHER SYNC: ${intersectionId} ===`)
-
     const hoursAgo = new Date(Date.now() - history_hours * 60 * 60 * 1000)
 
     // Get weather synchronization data across all sensors
@@ -225,8 +223,6 @@ router.get("/intersection/:intersectionId/flow", async (req, res) => {
     const collection = await db.getCollection(config.COLLECTION_NAME)
     const { intersectionId } = req.params
     const { hours = 2, granularity = "15min" } = req.query
-
-    console.log(`=== FLOW TRACKING: ${intersectionId} ===`)
 
     const hoursAgo = new Date(Date.now() - hours * 60 * 60 * 1000)
 
@@ -732,8 +728,6 @@ router.get("/stream", (req, res) => {
   res.setHeader("Connection", "keep-alive")
   res.setHeader("Access-Control-Allow-Origin", "*")
   
-  console.log("=== ENHANCED TRAFFIC STREAM CLIENT CONNECTED ===")
-  
   const streamService = StreamService.getInstance()
   streamService.addClient("TRAFFIC", res)
   
@@ -760,8 +754,6 @@ router.get("/intersection/:intersectionId/stream", (req, res) => {
   res.setHeader("Cache-Control", "no-cache")
   res.setHeader("Connection", "keep-alive")
   res.setHeader("Access-Control-Allow-Origin", "*")
-  
-  console.log(`=== INTERSECTION STREAM: ${intersectionId} ===`)
   
   const streamService = StreamService.getInstance()
   

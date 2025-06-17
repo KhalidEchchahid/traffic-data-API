@@ -34,7 +34,6 @@ function isEnhancedVehicleRecord(record) {
 router.get("/", async (req, res) => {
   const db = Database.getInstance()
   try {
-    console.log("=== ENHANCED VEHICLE RECORDS REQUEST ===")
     const collection = await db.getCollection(config.VEHICLE_COLLECTION)
     const { 
       page = 1, 
@@ -47,8 +46,6 @@ router.get("/", async (req, res) => {
       start, 
       end 
     } = req.query
-
-    console.log("Query parameters:", { page, limit, sensor_id, intersection_id, sensor_direction, vehicle_class, weather_condition, start, end })
 
     const filter = {}
 
@@ -88,16 +85,12 @@ router.get("/", async (req, res) => {
       }
     }
 
-    console.log("Applied filter:", JSON.stringify(filter, null, 2))
-
     const skip = (Number.parseInt(page) - 1) * Number.parseInt(limit)
 
     // Check if collection exists and has data
     const collectionExists = await collection.countDocuments({})
-    console.log(`Vehicle collection document count: ${collectionExists}`)
 
     if (collectionExists === 0) {
-      console.log("⚠️ Vehicle collection is empty - returning empty result with enhanced metadata")
       return res.json({
         data: [],
         pagination: {
@@ -137,7 +130,6 @@ router.get("/", async (req, res) => {
     }
 
     // FIXED: Simplified query without problematic $bitAnd aggregation
-    console.log("Fetching vehicle records with simple query...")
     const data = await collection
       .find(filter)
       .sort({ timestamp: -1 })
@@ -145,11 +137,8 @@ router.get("/", async (req, res) => {
       .limit(Number.parseInt(limit))
       .toArray()
 
-    console.log(`Found ${data.length} vehicle records`)
-
     // Get total count with same filter
     const total = await collection.countDocuments(filter)
-    console.log(`Total matching records: ${total}`)
 
     // Enhance data with JavaScript-based processing (MongoDB version compatible)
     const enhancedData = data.map(record => {
@@ -207,8 +196,6 @@ router.get("/", async (req, res) => {
       }
     }
 
-    console.log("=== ENHANCED VEHICLE RECORDS SUCCESS ===")
-    console.log(`Returning ${enhancedData.length} records (${enhancedCount} enhanced, ${legacyCount} legacy)`)
     res.json(response)
   } catch (error) {
     console.error("=== ENHANCED VEHICLE RECORDS ERROR ===")
@@ -224,11 +211,8 @@ router.get("/", async (req, res) => {
 router.get("/stats", async (req, res) => {
   const db = Database.getInstance()
   try {
-    console.log("=== ENHANCED VEHICLE STATS REQUEST ===")
     const collection = await db.getCollection(config.VEHICLE_COLLECTION)
     const { sensor_id, intersection_id, sensor_direction, start, end } = req.query
-
-    console.log("Stats query parameters:", { sensor_id, intersection_id, sensor_direction, start, end })
 
     const filter = {}
 
@@ -253,8 +237,6 @@ router.get("/stats", async (req, res) => {
         filter.timestamp.$lte = new Date(end)
       }
     }
-
-    console.log("Stats filter:", JSON.stringify(filter, null, 2))
 
     // Enhanced vehicle class statistics with intersection and weather correlation
     const vehicleClassPipeline = [
@@ -309,9 +291,7 @@ router.get("/stats", async (req, res) => {
       { $sort: { count: -1 } },
     ]
 
-    console.log("Getting vehicle class stats...")
     const vehicleClassStats = await collection.aggregate(vehicleClassPipeline).toArray()
-    console.log(`Vehicle class stats: ${vehicleClassStats.length} classes`)
 
     // Enhanced overall statistics
     const overallPipeline = [
@@ -375,13 +355,10 @@ router.get("/stats", async (req, res) => {
       },
     ]
 
-    console.log("Getting overall stats...")
     const overallStatsResult = await collection.aggregate(overallPipeline).toArray()
     const overallStats = overallStatsResult[0] || {}
-    console.log("Overall stats calculated")
 
     // Enhanced time distribution with proper timestamp handling
-    console.log("Getting hourly time distribution...")
     const timeDistributionPipeline = [
       { $match: filter },
       {
@@ -444,7 +421,6 @@ router.get("/stats", async (req, res) => {
     ]
 
     const timeDistribution = await collection.aggregate(timeDistributionPipeline).toArray()
-    console.log(`Time distribution: ${timeDistribution.length} hours`)
 
     // NEW: Weather correlation analysis (enhanced feature) - Fixed to exclude null values
     const weatherCorrelationPipeline = [
@@ -486,9 +462,7 @@ router.get("/stats", async (req, res) => {
       { $sort: { count: -1 } },
     ]
 
-    console.log("Getting weather correlation...")
     const weatherCorrelation = await collection.aggregate(weatherCorrelationPipeline).toArray()
-    console.log(`Weather correlation: ${weatherCorrelation.length} conditions`)
 
     // NEW: Intersection coordination statistics - Fixed to exclude null values
     const intersectionStatsPipeline = [
@@ -521,9 +495,7 @@ router.get("/stats", async (req, res) => {
       { $sort: { count: -1 } },
     ]
 
-    console.log("Getting intersection stats...")
     const intersectionStats = await collection.aggregate(intersectionStatsPipeline).toArray()
-    console.log(`Intersection stats: ${intersectionStats.length} intersection-direction combinations`)
 
     // Clean up data for response - No longer need JavaScript filtering since DB handles nulls
     const cleanOverallStats = {
@@ -582,7 +554,6 @@ router.get("/stats", async (req, res) => {
       }
     }
 
-    console.log("=== ENHANCED VEHICLE STATS SUCCESS ===")
     res.json(response)
   } catch (error) {
     console.error("=== ENHANCED VEHICLE STATS ERROR ===")
@@ -598,24 +569,17 @@ router.get("/stats", async (req, res) => {
 router.get("/intersection/:intersectionId", async (req, res) => {
   const db = Database.getInstance()
   try {
-    console.log("=== INTERSECTION VEHICLE ANALYTICS ===")
     const { intersectionId } = req.params
     const { timeWindow = 60, includeWeather = true } = req.query
 
-    console.log(`🔍 Getting vehicle data for intersection: ${intersectionId}`)
-    console.log(`⏰ Time window: ${timeWindow} minutes`)
-
     // Get recent vehicle data for this intersection
     const timeThreshold = new Date(Date.now() - timeWindow * 60 * 1000)
-    console.log(`⌚ Time threshold: ${timeThreshold.toISOString()}`)
 
     // Try multiple collection strategies
     const vehicleCollection = await db.getCollection(config.VEHICLE_COLLECTION)
     const trafficCollection = await db.getCollection(config.COLLECTION_NAME)
 
     // Strategy 1: Check vehicle_records collection for intersection_id
-    console.log(`🔍 Strategy 1: Checking ${config.VEHICLE_COLLECTION} collection for intersection_id`)
-    
     let pipeline = [
       {
         $match: {
@@ -639,20 +603,14 @@ router.get("/intersection/:intersectionId", async (req, res) => {
     ]
 
     let directionStats = await vehicleCollection.aggregate(pipeline).toArray()
-    console.log(`📊 Strategy 1 found ${directionStats.length} direction groups`)
 
     // Strategy 2: If no data found, try traffic_metrics collection
     if (directionStats.length === 0) {
-      console.log(`🔍 Strategy 2: Checking ${config.COLLECTION_NAME} collection for intersection_id`)
-      
       directionStats = await trafficCollection.aggregate(pipeline).toArray()
-      console.log(`📊 Strategy 2 found ${directionStats.length} direction groups`)
     }
 
     // Strategy 3: If still no data, try removing time filter (historical data)
     if (directionStats.length === 0) {
-      console.log(`🔍 Strategy 3: Checking without time filter (historical data)`)
-      
       const historicalPipeline = [
         {
           $match: {
@@ -688,14 +646,10 @@ router.get("/intersection/:intersectionId", async (req, res) => {
       if (directionStats.length === 0) {
         directionStats = await trafficCollection.aggregate(historicalPipeline).toArray()
       }
-      
-      console.log(`📊 Strategy 3 found ${directionStats.length} direction groups (historical)`)
     }
 
     // Strategy 4: If still no data, check if intersection exists at all
     if (directionStats.length === 0) {
-      console.log(`🔍 Strategy 4: Checking if intersection exists in any collection`)
-      
       // Check all available intersections
       const availableIntersections = await Promise.all([
         vehicleCollection.distinct("intersection_id"),
@@ -703,8 +657,7 @@ router.get("/intersection/:intersectionId", async (req, res) => {
       ])
       
       const allIntersections = [...new Set([...availableIntersections[0], ...availableIntersections[1]])]
-      console.log(`📍 Available intersections: ${allIntersections.join(', ')}`)
-      
+
       // Try fuzzy matching
       const fuzzyMatches = allIntersections.filter(id => 
         id && (
@@ -712,15 +665,11 @@ router.get("/intersection/:intersectionId", async (req, res) => {
           intersectionId.toLowerCase().includes(id.toLowerCase())
         )
       )
-      
-      console.log(`🔍 Fuzzy matches: ${fuzzyMatches.join(', ')}`)
 
       // Check vehicle collection document count
       const vehicleCollectionCount = await vehicleCollection.countDocuments({})
       const trafficCollectionCount = await trafficCollection.countDocuments({})
       
-      console.log(`📊 Collection stats: vehicle_records=${vehicleCollectionCount}, traffic_metrics=${trafficCollectionCount}`)
-
       // Return helpful error response
       return res.status(404).json({
         intersection_id: intersectionId,
@@ -794,10 +743,6 @@ router.get("/intersection/:intersectionId", async (req, res) => {
       }
     }
 
-    console.log(`✅ SUCCESS: Found ${totalVehicles} vehicles across ${directionStats.length} directions`)
-    console.log(`📊 Enhanced features: ${isEnhanced ? 'YES' : 'NO'}`)
-    console.log("=== INTERSECTION VEHICLE ANALYTICS SUCCESS ===")
-    
     res.json(response)
   } catch (error) {
     console.error("=== INTERSECTION VEHICLE ANALYTICS ERROR ===")
@@ -825,9 +770,6 @@ function getVehicleClassBreakdown(vehicleClasses) {
 
 // NEW: Enhanced streaming with intersection and weather filtering
 router.get("/stream", (req, res) => {
-  console.log("=== ENHANCED VEHICLE STREAM REQUEST ===")
-  const { intersection_id, sensor_direction, weather_condition } = req.query
-  
   res.setHeader("Content-Type", "text/event-stream")
   res.setHeader("Cache-Control", "no-cache")
   res.setHeader("Connection", "keep-alive")
@@ -837,8 +779,8 @@ router.get("/stream", (req, res) => {
   const streamService = StreamService.getInstance()
   
   // Enhanced streaming with filtering capabilities
+  const { intersection_id, sensor_direction, weather_condition } = req.query
   if (intersection_id) {
-    console.log(`Setting up intersection-specific vehicle stream for: ${intersection_id}`)
     streamService.addIntersectionClient("VEHICLE", intersection_id, res)
     
     // Send initial connection confirmation with filter info
@@ -853,8 +795,7 @@ router.get("/stream", (req, res) => {
       timestamp: new Date().toISOString()
     })}\n\n`)
   } else {
-    console.log("Setting up global vehicle stream")
-  streamService.addClient("VEHICLE", res)
+    streamService.addClient("VEHICLE", res)
     
     // Send initial connection confirmation
     res.write(`data: ${JSON.stringify({
@@ -865,17 +806,15 @@ router.get("/stream", (req, res) => {
     })}\n\n`)
   }
 
-  // Cleanup on disconnect
-  res.on("close", () => {
-    console.log("Enhanced vehicle stream client disconnected")
-  })
+      // Cleanup on disconnect
+    res.on("close", () => {
+      // Client disconnected
+    })
 })
 
 // NEW: Vehicle length specifications endpoint
 router.get("/specifications", (req, res) => {
   try {
-    console.log("=== VEHICLE SPECIFICATIONS REQUEST ===")
-    
     const response = {
       enhanced_vehicle_lengths: ENHANCED_VEHICLE_LENGTHS,
       status_byte_decoding: {
@@ -897,7 +836,6 @@ router.get("/specifications", (req, res) => {
       }
     }
 
-    console.log("=== VEHICLE SPECIFICATIONS SUCCESS ===")
     res.json(response)
   } catch (error) {
     console.error("=== VEHICLE SPECIFICATIONS ERROR ===")
@@ -912,7 +850,6 @@ router.get("/specifications", (req, res) => {
 router.get("/intersection/:intersectionId/diagnostics", async (req, res) => {
   const db = Database.getInstance()
   try {
-    console.log("=== VEHICLE DIAGNOSTICS FOR INTERSECTION ===")
     const { intersectionId } = req.params
     
     const vehicleCollection = await db.getCollection(config.VEHICLE_COLLECTION)
@@ -1023,7 +960,6 @@ router.get("/intersection/:intersectionId/diagnostics", async (req, res) => {
       all_available_intersections: allIntersections.slice(0, 20) // Limit to first 20 for response size
     }
     
-    console.log("=== VEHICLE DIAGNOSTICS SUCCESS ===")
     res.json(response)
     
   } catch (error) {

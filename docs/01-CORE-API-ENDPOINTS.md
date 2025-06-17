@@ -555,136 +555,264 @@ interface CoordinationResponse {
 
 ## 📡 Sensor Endpoints
 
-### GET `/api/sensors/health`
+### GET `/api/sensors/status`
 
-Sensor health monitoring and status.
+Sensor status monitoring and health data (replaces non-existent `/sensors/health`).
 
 **Response:**
 ```typescript
-interface SensorHealthResponse {
-  data: SensorHealthData[];
-  summary: {
-    total_sensors: number;
-    healthy_sensors: number;
-    warning_sensors: number;
-    critical_sensors: number;
-    offline_sensors: number;
-  };
+interface SensorStatusResponse {
+  data: SensorStatusData[];
 }
 
-interface SensorHealthData {
+interface SensorStatusData {
   _id: string;
   sensor_id: string;
   timestamp: string;
   status: string;           // "healthy" | "warning" | "critical" | "offline"
   battery_level?: number;   // 0-100
   signal_strength?: number; // 0-100
-  temperature?: number;
+  temperature_c?: number;   // Temperature in Celsius
+  hw_fault?: boolean;       // Hardware fault flag
+  low_voltage?: boolean;    // Low voltage flag
+  uptime_s?: number;        // Uptime in seconds
+  issues: string[];         // Array of issue descriptions
   last_maintenance?: string;
   error_codes?: string[];
-  uptime_hours?: number;
 }
+```
+
+**Example Response:**
+```json
+[
+  {
+    "_id": "65a1b2c3d4e5f6789",
+    "sensor_id": "sensor-bd-anfa-north",
+    "timestamp": "2024-01-15T14:30:25.123Z",
+    "status": "healthy",
+    "battery_level": 85,
+    "temperature_c": 32.5,
+    "hw_fault": false,
+    "low_voltage": false,
+    "uptime_s": 86400,
+    "issues": []
+  },
+  {
+    "_id": "65a1b2c3d4e5f6790",
+    "sensor_id": "sensor-bd-anfa-south",
+    "timestamp": "2024-01-15T14:30:20.456Z",
+    "status": "warning",
+    "battery_level": 15,
+    "temperature_c": 42.1,
+    "hw_fault": false,
+    "low_voltage": true,
+    "uptime_s": 75600,
+    "issues": ["Low battery", "High temperature"]
+  }
+]
 ```
 
 ### GET `/api/sensors/registry`
 
-Complete sensor registry with capabilities.
+Complete sensor registry with capabilities and enhanced features.
 
 **Response:**
 ```typescript
 interface SensorRegistryResponse {
+  total_sensors: number;
   sensors: RegisteredSensor[];
-  summary: {
-    total_registered: number;
-    active_sensors: number;
-    by_type: {
-      [type: string]: number;
-    };
-    by_intersection: {
-      [intersection_id: string]: number;
-    };
-  };
 }
 
 interface RegisteredSensor {
   sensor_id: string;
-  sensor_type: string;      // "traffic_monitor" | "weather_station" | "vehicle_detector"
-  location_id: string;
-  location_x: number;
-  location_y: number;
   intersection_id?: string;
-  sensor_direction?: string;
+  sensor_direction?: string;        // "north" | "south" | "east" | "west"
+  type: string;                    // "intersection" | "traffic" | "hybrid"
+  enhanced_features: boolean;
   
-  capabilities: string[];   // ["weather_monitoring", "flow_tracking", "intersection_monitoring"]
-  
-  location: {
-    type: "Point";
-    coordinates: [number, number];
+  capabilities: {
+    intersection_coordination?: boolean;
+    weather_sync?: boolean;
+    flow_rate_detection?: boolean;
+    queue_propagation?: boolean;
+    efficiency_metrics?: boolean;
+    traffic_flow?: boolean;
+    density_detection?: boolean;
+    speed_detection?: boolean;
+    incident_detection?: boolean;
+    weather_monitoring?: boolean;
   };
   
-  registration_info: {
-    first_seen: string;
-    last_seen: string;
-    total_messages: number;
-    message_topics: string[];
-  };
-  
-  status: {
-    is_active: boolean;
-    last_activity: string;
-    health_status: string;
-  };
+  status: string;                  // "active" | "inactive"
+  first_seen: string;
+  last_seen: string;
+  data_points: number;
 }
 ```
 
 ### GET `/api/sensors/map`
 
-Geo-spatial sensor map data for visualization.
-
-**Query Parameters:**
-```typescript
-interface SensorMapParams {
-  bounds?: {
-    north: number;
-    south: number;
-    east: number;
-    west: number;
-  };
-  sensor_type?: string;
-  intersection_id?: string;
-  active_only?: boolean;
-}
-```
+Geo-spatial sensor map data for visualization with GeoJSON format.
 
 **Response:**
 ```typescript
 interface SensorMapResponse {
-  sensors: {
-    sensor_id: string;
-    coordinates: [number, number];
-    type: string;
-    status: string;
-    intersection_id?: string;
-    capabilities: string[];
-    last_activity: string;
-  }[];
-  
-  intersections: {
-    intersection_id: string;
-    coordinates: [number, number];
-    sensor_count: number;
-    efficiency: number;
-    status: string;
-  }[];
-  
+  type: "FeatureCollection";
+  features: SensorMapFeature[];
   metadata: {
     total_sensors: number;
-    active_sensors: number;
-    coverage_area: {
-      center: [number, number];
-      radius_km: number;
+    sensors_with_direction: number;
+    data_sources: {
+      traffic_collection: number;
+      intersection_collection: number;
+    };
+    debug: {
+      collections_used: string[];
+      coordinate_source: string;
     };
   };
+}
+
+interface SensorMapFeature {
+  type: "Feature";
+  geometry: {
+    type: "Point";
+    coordinates: [number, number]; // [longitude, latitude]
+  };
+  properties: {
+    sensor_id: string;
+    intersection_id?: string;
+    sensor_direction?: string;
+    last_seen: string;
+  };
+}
+```
+
+### GET `/api/sensors/:id/capabilities`
+
+Get detailed capabilities for a specific sensor.
+
+**Path Parameters:**
+- `id`: Sensor identifier
+
+**Response:**
+```typescript
+interface SensorCapabilitiesResponse {
+  sensor_id: string;
+  enhanced_features: boolean;
+  
+  basic_capabilities: {
+    traffic_flow: boolean;
+    density_detection: boolean;
+    speed_detection: boolean;
+    incident_detection: boolean;
+    weather_monitoring: boolean;
+  };
+  
+  enhanced_capabilities?: {
+    intersection_coordination: boolean;
+    weather_synchronization: boolean;
+    flow_rate_analysis: boolean;
+    queue_propagation_tracking: boolean;
+    efficiency_monitoring: boolean;
+    directional_sensing: boolean;
+    phase_timing: boolean;
+  };
+  
+  coordination_data?: {
+    intersection_id: string;
+    sensor_direction: string;
+    current_efficiency: number;
+    last_update: string;
+  };
+}
+```
+
+### GET `/api/sensors/intersection/:id`
+
+Get all sensors for a specific intersection with merged data from traffic and intersection collections.
+
+**Path Parameters:**
+- `id`: Intersection identifier
+
+**Response:**
+```typescript
+interface IntersectionSensorsResponse {
+  intersection_id: string;
+  total_sensors: number;
+  sensors: IntersectionSensor[];
+  metadata: {
+    sensors_with_direction: number;
+    data_sources: {
+      traffic_sensors: number;
+      intersection_sensors: number;
+    };
+    debug: {
+      collections_merged: string[];
+      direction_inference_applied: boolean;
+    };
+  };
+}
+
+interface IntersectionSensor {
+  _id: string;
+  sensor_id: string;
+  sensor_direction?: string;
+  status: string;
+  data_points: number;
+  vehicle_flow_rate?: number;
+  queue_propagation_factor?: number;
+  intersection_efficiency?: number;
+  coordinated_light_status?: string;
+  traffic_flow_rate?: number;
+  current_speed?: number;
+  current_density?: number;
+  last_update: string;
+}
+```
+
+### GET `/api/sensors/history/:sensorId`
+
+Get sensor health history for time-series analysis.
+
+**Path Parameters:**
+- `sensorId`: Sensor identifier
+
+**Query Parameters:**
+- `start`: Start date (ISO string)
+- `end`: End date (ISO string)
+
+**Response:**
+```typescript
+interface SensorHistoryResponse {
+  batteryHistory: TimeSeriesPoint[];
+  temperatureHistory: TimeSeriesPoint[];
+  uptimeHistory: TimeSeriesPoint[];
+  faultHistory: FaultHistoryPoint[];
+}
+
+interface TimeSeriesPoint {
+  timestamp: string;
+  value: number;
+}
+
+interface FaultHistoryPoint {
+  timestamp: string;
+  hw_fault: boolean;
+  low_voltage: boolean;
+}
+```
+
+### GET `/api/sensors/stream`
+
+Real-time sensor health data stream using Server-Sent Events.
+
+**Response Stream:**
+```typescript
+interface SensorStreamEvent {
+  type: "SENSOR";
+  data: SensorStatusData;
+  timestamp: string;
 }
 ```
 
@@ -804,6 +932,40 @@ interface AlertCountResponse {
     };
   };
 }
+```
+
+### GET `/api/alerts/stream` ⚡ SSE
+
+Real-time alert data stream using Server-Sent Events.
+
+**Query Parameters:**
+```typescript
+interface AlertStreamParams {
+  type?: string;           // Filter by alert type
+  severity?: string;       // Filter by severity level
+  sensor_id?: string;      // Filter by specific sensor
+  intersection_id?: string; // Filter by intersection
+}
+```
+
+**Response Stream:**
+```typescript
+interface AlertStreamEvent {
+  type: 'ALERT';
+  data: AlertData;
+  timestamp: string;
+}
+```
+
+**Frontend Integration Example:**
+```typescript
+const eventSource = new EventSource('/api/alerts/stream?severity=high,critical');
+
+eventSource.onmessage = (event) => {
+  const update: AlertStreamEvent = JSON.parse(event.data);
+  // Handle real-time alert
+  console.log('New alert:', update.data);
+};
 ```
 
 ---

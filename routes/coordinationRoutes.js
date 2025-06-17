@@ -11,8 +11,6 @@ router.get("/intersections/:intersectionId/status", async (req, res) => {
     const { intersectionId } = req.params
     const { hours = 1 } = req.query
 
-    console.log(`=== INTERSECTION COORDINATION STATUS: ${intersectionId} ===`)
-
     const hoursAgo = new Date(Date.now() - hours * 60 * 60 * 1000)
     const collection = await db.getCollection(config.COLLECTION_NAME)
 
@@ -47,11 +45,6 @@ router.get("/intersections/:intersectionId/status", async (req, res) => {
     ]
 
     const sensorData = await collection.aggregate(pipeline).toArray()
-    
-    console.log(`🔍 DEBUG: Pipeline returned ${sensorData.length} sensor groups`)
-    if (sensorData.length > 0) {
-      console.log(`🔍 DEBUG: Sample sensor data:`, JSON.stringify(sensorData[0], null, 2))
-    }
 
     if (sensorData.length === 0) {
       // Check if intersection exists with ANY data (enhanced or legacy)
@@ -155,8 +148,6 @@ router.get("/intersections/:intersectionId/status", async (req, res) => {
       synchronization_status: uniquePhases.length <= 2 ? "synchronized" : "unsynchronized"
     }
 
-    console.log(`✅ Enhanced coordination data retrieved for ${sensorData.length} sensors`)
-
     res.json(coordinationSummary)
   } catch (error) {
     console.error("Intersection Coordination Error:", error)
@@ -170,8 +161,6 @@ router.get("/intersections/:intersectionId/weather", async (req, res) => {
   try {
     const { intersectionId } = req.params
     const { history_hours = 6 } = req.query
-
-    console.log(`=== WEATHER SYNC: ${intersectionId} ===`)
 
     const hoursAgo = new Date(Date.now() - history_hours * 60 * 60 * 1000)
     const collection = await db.getCollection(config.COLLECTION_NAME)
@@ -263,7 +252,6 @@ router.get("/intersections/:intersectionId/lights", async (req, res) => {
     const { intersectionId } = req.params
     const { hours = 2 } = req.query
 
-    console.log(`=== LIGHT COORDINATION: ${intersectionId} ===`)
 
     const hoursAgo = new Date(Date.now() - hours * 60 * 60 * 1000)
     const collection = await db.getCollection(config.INTERSECTION_COLLECTION)
@@ -323,7 +311,6 @@ router.get("/intersections/:intersectionId/lights", async (req, res) => {
       Math.max(0.6, 1.0 - (flowVariance / 100)) : 
       (latestLight.intersection_efficiency || 0.8)
 
-    console.log(`💡 Dynamic calculation: ${dynamicTotalVehicles} vehicles (was ${latestLight.total_intersection_vehicles}), efficiency ${Math.round(dynamicEfficiency * 100)}%`)
     
     // Analyze light phase patterns
     const phaseHistory = lightData.map(d => ({
@@ -387,7 +374,6 @@ router.get("/intersections/:intersectionId/flow", async (req, res) => {
     const { intersectionId } = req.params
     const { hours = 2, granularity = "15min" } = req.query
 
-    console.log(`=== FLOW TRACKING: ${intersectionId} ===`)
 
     const hoursAgo = new Date(Date.now() - hours * 60 * 60 * 1000)
     const collection = await db.getCollection(config.COLLECTION_NAME)
@@ -487,7 +473,6 @@ router.get("/intersections", async (req, res) => {
   try {
     const { status = "all", enhanced_only = "false" } = req.query
 
-    console.log("=== ALL INTERSECTIONS COORDINATION ===")
 
     const collection = await db.getCollection(config.COLLECTION_NAME)
     
@@ -577,7 +562,6 @@ router.get("/intersections", async (req, res) => {
       return acc
     }, {})
 
-    console.log(`✅ Found ${totalIntersections} intersections with coordination data`)
 
     res.json({
       total_intersections: totalIntersections,
@@ -610,7 +594,6 @@ router.get("/stream", (req, res) => {
   res.setHeader("Connection", "keep-alive")
   res.setHeader("Access-Control-Allow-Origin", "*")
   
-  console.log("=== COORDINATION STREAM CLIENT CONNECTED ===")
   
   const streamService = StreamService.getInstance()
   streamService.addClient("COORDINATION", res)
@@ -639,7 +622,6 @@ router.get("/intersections/:intersectionId/stream", (req, res) => {
   res.setHeader("Connection", "keep-alive")
   res.setHeader("Access-Control-Allow-Origin", "*")
   
-  console.log(`=== INTERSECTION COORDINATION STREAM: ${intersectionId} ===`)
   
   const streamService = StreamService.getInstance()
   streamService.addClient("COORDINATION", res)
@@ -658,7 +640,6 @@ router.get("/intersections/:intersectionId/stream", (req, res) => {
 router.get("/diagnostics", async (req, res) => {
   const db = Database.getInstance()
   try {
-    console.log("=== COORDINATION DIAGNOSTICS ===")
 
     const collection = await db.getCollection(config.COLLECTION_NAME)
     const intersectionCollection = await db.getCollection(config.INTERSECTION_COLLECTION)
@@ -820,7 +801,6 @@ router.get("/intersections/:intersectionId/status/enhanced", async (req, res) =>
   try {
     const { intersectionId } = req.params
 
-    console.log(`=== ENHANCED DYNAMIC STATUS: ${intersectionId} ===`)
 
     const trafficCollection = await db.getCollection(config.COLLECTION_NAME)
     const intersectionCollection = await db.getCollection(config.INTERSECTION_COLLECTION)
@@ -890,11 +870,6 @@ router.get("/intersections/:intersectionId/status/enhanced", async (req, res) =>
     
     const uniqueLightPhases = [...new Set(lightPhases)]
     
-    console.log(`🔢 DYNAMIC CALCULATION RESULTS:`)
-    console.log(`📊 Sensors found: ${Object.keys(sensorsByDirection).length} (${Object.keys(sensorsByDirection).join(', ')})`)
-    console.log(`🚗 Dynamic vehicle count: ${dynamicVehicleCount} (was ${latestIntersectionData?.total_intersection_vehicles || 'N/A'})`)
-    console.log(`🌊 Dynamic flow rate: ${Math.round(dynamicFlowRate * 100) / 100}`)
-    console.log(`⚡ Dynamic efficiency: ${Math.round(dynamicEfficiency * 100)}%`)
 
     res.json({
       intersection_id: intersectionId,
@@ -958,7 +933,6 @@ router.get("/intersections/:intersectionId/flow/dynamic", async (req, res) => {
   try {
     const { intersectionId } = req.params
 
-    console.log(`=== DYNAMIC FLOW CALCULATION: ${intersectionId} ===`)
 
     const trafficCollection = await db.getCollection(config.COLLECTION_NAME)
 
@@ -1066,11 +1040,6 @@ router.get("/intersections/:intersectionId/flow/dynamic", async (req, res) => {
         return sum + Math.pow(calc.flow_rates.dynamic_calculated - avgDynamic, 2)
       }, 0) / flowCalculations.length) : 0
 
-    console.log(`🔢 DYNAMIC FLOW ANALYSIS:`)
-    console.log(`📊 Static total: ${totalStaticFlow} (all 120.0 hardcoded)`)
-    console.log(`🌊 Dynamic total: ${Math.round(totalDynamicFlow * 100) / 100}`)
-    console.log(`🚗 Total vehicles: ${totalVehicles}`)
-    console.log(`📈 Flow variance: ${Math.round(flowVariance * 100) / 100}`)
 
     res.json({
       intersection_id: intersectionId,

@@ -21,21 +21,6 @@ router.post("/traffic", (req, res) => {
       data.traffic_light_phase
     ));
 
-    if (isEnhanced) {
-      console.log("=== RECEIVED ENHANCED TRAFFIC DATA ===");
-      console.log(`Intersection: ${data.intersection_id}`);
-      console.log(`Sensor Direction: ${data.sensor_direction || 'N/A'}`);
-      console.log(`Weather: ${data.coordinated_weather?.conditions || 'N/A'}`);
-      console.log(`Flow Rate: ${data.vehicle_flow_rate || 'N/A'} vehicles/min`);
-      console.log(`Light Phase: ${data.traffic_light_phase || 'N/A'}`);
-      console.log("===================================");
-    } else {
-      console.log("=== RECEIVED LEGACY TRAFFIC DATA ===");
-      console.log(`Sensor: ${data.sensor_id}`);
-      console.log(`Density: ${data.density}, Speed: ${data.speed}`);
-      console.log("===================================");
-    }
-
     // Broadcast to connected clients with enhancement info
     streamService.broadcast("TRAFFIC", {
       ...data,
@@ -70,21 +55,6 @@ router.post("/intersection", (req, res) => {
       data.phase_time_remaining !== undefined
     ));
 
-    if (isEnhanced) {
-      console.log("=== RECEIVED ENHANCED INTERSECTION DATA ===");
-      console.log(`Intersection: ${data.intersection_id}`);
-      console.log(`Light Status: ${data.coordinated_light_status || 'N/A'}`);
-      console.log(`Efficiency: ${data.intersection_efficiency || 'N/A'}`);
-      console.log(`Total Vehicles: ${data.total_intersection_vehicles || 'N/A'}`);
-      console.log(`Phase Remaining: ${data.phase_time_remaining || 'N/A'}s`);
-      console.log("========================================");
-    } else {
-      console.log("=== RECEIVED LEGACY INTERSECTION DATA ===");
-      console.log(`Sensor: ${data.sensor_id}`);
-      console.log(`Stopped Vehicles: ${data.stopped_vehicles_count || 'N/A'}`);
-      console.log("=======================================");
-    }
-
     // Broadcast to connected clients
     streamService.broadcast("INTERSECTION", {
       ...data,
@@ -115,16 +85,6 @@ router.post("/coordination", (req, res) => {
   try {
     const { intersection_id, coordination_state, message_type, enhanced_fields } = req.body;
     
-    console.log("=== RECEIVED INTERSECTION COORDINATION ===");
-    console.log(`Intersection: ${intersection_id}`);
-    console.log(`Message Type: ${message_type}`);
-    console.log(`Active Sensors: ${coordination_state?.sensors?.length || 0}`);
-    console.log(`Sensor Directions: ${coordination_state?.sensorDirections ? Array.from(coordination_state.sensorDirections).join(', ') : 'N/A'}`);
-    console.log(`Weather: ${coordination_state?.lastWeather?.conditions || 'N/A'}`);
-    console.log(`Light Phase: ${coordination_state?.lastLightPhase || 'N/A'}`);
-    console.log(`Enhanced Fields: ${Object.keys(enhanced_fields || {}).join(', ') || 'None'}`);
-    console.log("==========================================");
-
     // Broadcast coordination update to connected clients
     streamService.broadcast("COORDINATION", {
       type: "intersection_coordination",
@@ -164,10 +124,6 @@ router.post("/coordination", (req, res) => {
  */
 router.post("/vehicle", (req, res) => {
   try {
-    console.log("=== RECEIVED VEHICLE DATA ===");
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log("============================");
-
     // Broadcast to connected clients
     streamService.broadcast("VEHICLE", req.body);
     res.status(200).json({ success: true });
@@ -182,10 +138,6 @@ router.post("/vehicle", (req, res) => {
  */
 router.post("/sensor", (req, res) => {
   try {
-    console.log("=== RECEIVED SENSOR HEALTH DATA ===");
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log("==================================");
-
     // Broadcast to connected clients
     streamService.broadcast("SENSOR", req.body);
     res.status(200).json({ success: true });
@@ -200,10 +152,6 @@ router.post("/sensor", (req, res) => {
  */
 router.post("/alert", (req, res) => {
   try {
-    console.log("=== RECEIVED TRAFFIC ALERT ===");
-    console.log(JSON.stringify(req.body, null, 2));
-    console.log("=============================");
-
     // Broadcast to connected clients
     streamService.broadcast("ALERT", req.body);
     res.status(200).json({ success: true });

@@ -141,6 +141,81 @@ interface CoordinationStreamEvent {
 }
 ```
 
+#### Alert Data Stream
+
+**Endpoint**: `GET /api/alerts/stream`
+
+```typescript
+interface AlertStreamEvent {
+  type: 'ALERT';
+  data: AlertData;
+  timestamp: string;
+}
+
+interface AlertStreamConnection {
+  endpoint: '/api/alerts/stream';
+  query_params?: {
+    type?: string;
+    severity?: string;
+    sensor_id?: string;
+    intersection_id?: string;
+  };
+  event_type: 'ALERT';
+  reconnect: boolean;
+  retry_interval: number; // milliseconds
+}
+```
+
+**Frontend Implementation:**
+```typescript
+const useAlertStream = (severity?: string, type?: string) => {
+  const [alerts, setAlerts] = useState<AlertData[]>([]);
+  const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('disconnected');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (severity) params.append('severity', severity);
+    if (type) params.append('type', type);
+    
+    const url = `/api/alerts/stream${params.toString() ? `?${params.toString()}` : ''}`;
+    const eventSource = new EventSource(url);
+
+    setConnectionStatus('connecting');
+
+    eventSource.onopen = () => {
+      setConnectionStatus('connected');
+      setError(null);
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const update: AlertStreamEvent = JSON.parse(event.data);
+        setAlerts(prev => {
+          // Keep last 50 alerts
+          const filtered = prev.filter(alert => alert._id !== update.data._id);
+          return [update.data, ...filtered.slice(0, 49)];
+        });
+      } catch (err) {
+        setError('Failed to parse alert data');
+      }
+    };
+
+    eventSource.onerror = () => {
+      setConnectionStatus('disconnected');
+      setError('Connection lost. Reconnecting...');
+    };
+
+    return () => {
+      eventSource.close();
+      setConnectionStatus('disconnected');
+    };
+  }, [severity, type]);
+
+  return { alerts, connectionStatus, error };
+};
+```
+
 **Multi-Stream Management Hook:**
 ```typescript
 const useMultiStreamManager = (intersectionIds: string[]) => {
@@ -1079,3 +1154,70 @@ const AdaptiveDashboard: React.FC = () => {
 ---
 
 This comprehensive documentation provides everything needed to build a modern, real-time traffic monitoring dashboard with NextJS. Big Daddy, these three files contain complete API specifications, integration patterns, and implementation examples for creating a world-class visualization interface that leverages all the enhanced features of your traffic monitoring system! 🚀 
+
+### Data Fetching Hooks
+
+```typescript
+// Vehicle Statistics Hook
+const useVehicleStats = (intersection_id?: string) => {
+  return useQuery({
+    queryKey: ['vehicle-stats', intersection_id],
+    queryFn: async () => {
+      const params = intersection_id ? `?intersection_id=${intersection_id}` : '';
+      const response = await fetch(`/api/vehicles/stats${params}`);
+      return response.json();
+    },
+    refetchInterval: 30000 // Refresh every 30 seconds
+  });
+};
+
+// Sensor Status Hook (corrected endpoint)
+const useSensorStatus = () => {
+  return useQuery({
+    queryKey: ['sensor-status'],
+    queryFn: async () => {
+      const response = await fetch('/api/sensors/status');
+      return response.json();
+    },
+    refetchInterval: 60000 // Refresh every minute
+  });
+};
+
+// Sensor Registry Hook  
+const useSensorRegistry = () => {
+  return useQuery({
+    queryKey: ['sensor-registry'],
+    queryFn: async () => {
+      const response = await fetch('/api/sensors/registry');
+      return response.json();
+    },
+    staleTime: 300000 // Sensors don't change often, cache for 5 minutes
+  });
+};
+
+// Intersection Sensors Hook
+const useIntersectionSensors = (intersectionId: string) => {
+  return useQuery({
+    queryKey: ['intersection-sensors', intersectionId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sensors/intersection/${intersectionId}`);
+      return response.json();
+    },
+    refetchInterval: 30000,
+    enabled: !!intersectionId
+  });
+};
+
+// Sensor Capabilities Hook
+const useSensorCapabilities = (sensorId: string) => {
+  return useQuery({
+    queryKey: ['sensor-capabilities', sensorId],
+    queryFn: async () => {
+      const response = await fetch(`/api/sensors/${sensorId}/capabilities`);
+      return response.json();
+    },
+    staleTime: 600000, // Capabilities rarely change, cache for 10 minutes
+    enabled: !!sensorId
+  });
+};
+``` 

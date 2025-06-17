@@ -47,12 +47,7 @@ class StreamService {
     // Handle client disconnect
     res.on("close", () => {
       this.removeClient(stream, res);
-      console.log(`Client disconnected from ${stream} stream`);
     });
-
-    console.log(
-      `Client connected to ${stream} stream. Total clients: ${this.clients[stream].length}`
-    );
   }
 
   /**
@@ -62,9 +57,6 @@ class StreamService {
    * @param {object} res - Express response object
    */
   addIntersectionClient(stream, intersectionId, res) {
-    console.log(`=== ADDING INTERSECTION CLIENT ===`)
-    console.log(`Stream: ${stream}, Intersection: ${intersectionId}`)
-
     // Set up SSE headers
     this.setupSSE(res);
 
@@ -98,11 +90,7 @@ class StreamService {
     // Handle client disconnect
     res.on("close", () => {
       this.removeIntersectionClient(stream, intersectionId, res);
-      console.log(`Client disconnected from ${stream} stream for intersection ${intersectionId}`);
     });
-
-    const clientCount = intersectionStreams.get(stream).length;
-    console.log(`Intersection client connected. ${stream}/${intersectionId}: ${clientCount} clients`);
   }
 
   /**
@@ -223,8 +211,6 @@ class StreamService {
         clients.splice(index, 1);
       }
     });
-
-    console.log(`📡 Broadcasted ${stream} data to ${clients.length} intersection ${intersectionId} clients`);
   }
 
   /**
@@ -283,8 +269,6 @@ class StreamService {
     if (this.clients.COORDINATION) {
       this.broadcast("COORDINATION", payload);
     }
-
-    console.log(`🔗 Broadcasted coordination update for intersection ${intersectionId}`);
   }
 }
 
